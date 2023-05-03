@@ -1,0 +1,31 @@
+import requests
+import time
+import sqlite3
+import os
+
+# Connect to the SQLite database
+conn = sqlite3.connect("trading_pairs.db")
+c = conn.cursor()
+
+# Create a table to store the USDT trading pairs
+c.execute("CREATE TABLE IF NOT EXISTS usdt_pairs (pair TEXT PRIMARY KEY)")
+
+while True:
+    # Call the Binance API to get information on all trading pairs
+    response = requests.get("https://api.binance.com/api/v3/exchangeInfo")
+    data = response.json()
+
+    # Check each trading pair to see if it's a new USDT pair
+    for symbol in data["symbols"]:
+        if symbol["quoteAsset"] == "USDT":
+            # Check if the trading pair is already in the database
+            c.execute("SELECT * FROM usdt_pairs WHERE pair=?", (symbol["symbol"],))
+            result = c.fetchone()
+            if not result:
+                # If it's a new USDT trading pair, print the pair and add it to the database
+                print(f"New USDT trading pair added: {symbol['symbol']}")
+                c.execute("INSERT INTO usdt_pairs (pair) VALUES (?)", (symbol["symbol"],))
+                conn.commit()
+
+    # Wait 10 seconds before checking again
+    time.sleep(10)
